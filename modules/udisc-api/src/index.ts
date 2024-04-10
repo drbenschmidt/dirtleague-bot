@@ -361,6 +361,9 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
           // handle IPC result
           if ((uDiscMessage as UDiscWsSubResponse).collection !== 'kadira_settings') {
             addedMap[(uDiscMessage as UDiscWsSubResponse).id] = (uDiscMessage as UDiscWsSubResponse);
+          } else {
+            // super ugly
+            responses--;
           }
         break;
       }
