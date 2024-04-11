@@ -101,7 +101,7 @@ export type UDiscCardCastPreloadedState = {
       layoutId: number;
       layoutName: string;
       notes: unknown;
-      playFormat: 'singles' | 'doubles';
+      playFormat: 'singles' | 'teams';
       startDate: string;
       startingHoleIndex: number;
       stepCount: number;
@@ -373,7 +373,6 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
       // Remove the random a.
       const uDiscMessage = JSON.parse(fixed) as UDiscWsData;
       
-
       switch (uDiscMessage.msg) {
         case "connected":
           // handle session info?
@@ -403,6 +402,7 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
           players: (ipcMap['1'] as UDiscWsGetCardCastResponse).result.players,
           entries: Object.values(addedMap).map((a) => (a as UDiscWsSubScorecardEntryResponse).fields),
         });
+        wss.close();
       }
     });
   });
