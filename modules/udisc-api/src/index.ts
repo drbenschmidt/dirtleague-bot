@@ -2,24 +2,7 @@ import axios from 'axios';
 import { load as parseHtml } from 'cheerio';
 import { WebSocket } from 'ws';
 import randomstring from 'randomstring';
-
-export type ScorecardRecord = {
-    total: number;
-    players: Array<{
-      name: string;
-      username: string;
-    }>;
-};
-
-export type Scorecard = {
-    courseName: string;
-    layoutName: string;
-    date: Date;
-    numberOfHoles?: number;
-    layoutPar?: number;
-    layoutDistance?: string;
-    entries: Array<ScorecardRecord>;
-};
+import { Scorecard } from '@dirtleague/common';
 
 export const parseScorecardById = async (id: string): Promise<Scorecard> => {
     return parseScorecardByUrl(`https://udisc.com/scorecards/${id}`);
