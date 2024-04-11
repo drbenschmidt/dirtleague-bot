@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { load as parseHtml } from 'cheerio';
-import { WebSocket } from 'ws';
+import { WebSocket, RawData } from 'ws';
 import randomstring from 'randomstring';
 import { Scorecard } from '@dirtleague/common';
 
@@ -288,6 +288,95 @@ const generateSessionId = () => {
 const generateSubId = () => {
   // QwQK6H3MwErgWcHaa
   return randomstring.generate({ length: 17 });
+}
+
+const asUdiscMessage = (obj: Record<string, unknown>): string => {
+  const objStr = JSON.stringify(obj).replace(/"/g, '\\"');
+  const wrappedStr = `["${objStr}"]`;
+  return wrappedStr;
+};
+
+export type CallbackWrapper = {
+  id: string;
+  expectedMessages: number;
+  resolve: () => {};
+  reject: () => {};
+};
+
+const getCallback = (id: string, expectedMessages = 1): { promise: Promise<unknown>, callback: CallbackWrapper } => {
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  const callback = {
+    resolve, reject, id, expectedMessages
+  };
+
+  return { promise, callback };
+};
+
+export class UdiscCardCastClient {
+  callbacks = {};
+  callbackId = 0;
+  wss: WebSocket;
+
+  async open() {
+    if (!this.wss) {
+      const server = generateServerId();
+      const sessionId = generateSessionId();
+      this.wss = new WebSocket(`wss://sync.udisc.com/sockjs/${server}/${sessionId}/websocket`);
+      this.wss.on('message', this.onMessage.bind(this));
+      this.wss.on('open', () => {
+        this.send({
+          msg: 'connect',
+          version: '1',
+          support: ['1', 'pre2', 'pre1']
+        });
+      });
+    }
+  }
+
+  private onMessage(data: RawData, isBinary: boolean) {
+
+  }
+
+  private send(obj: Record<string, unknown>, callback?: CallbackWrapper) {
+    const payload = asUdiscMessage(obj);
+    this.wss.send(payload);
+
+    if (!callback) {
+      return;
+    }
+
+    this.callbacks[callback.id] = callback;
+  }
+
+  async getPreloadedState() {}
+
+  async getUsersAndPlayers(userIds: string[], playerIds: string[]) {
+    const { callback, promise } = getCallback((this.callbackId++).toString());
+    this.send({
+      msg: 'method',
+      id: callback.id,
+      method: 'users.getCardCastUsersAndPlayers',
+      params: [{ userIds, playerIds }]
+    }, callback);
+
+    return promise;
+  }
+
+  async getEntries(entryObjectIds: string[]) {
+    const { callback, promise } = getCallback(generateSubId(), entryObjectIds.length);
+    this.send({
+      msg: 'sub',
+      id: callback.id,
+      name: 'cardcastEntries',
+      params: [ entryObjectIds ]
+    }, callback);
+
+    return promise;
+  }
 }
 
 // TODO: Convert to class and implement proper async IPC flow.
