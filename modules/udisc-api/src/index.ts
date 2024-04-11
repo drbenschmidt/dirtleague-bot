@@ -106,7 +106,11 @@ export type UDiscCardCastPreloadedState = {
       startingHoleIndex: number;
       stepCount: number;
       syncType: number;
-      unlinkedPlayers: [];
+      unlinkedPlayers: Array<{
+        __type: 'Pointer';
+        className: '_Player';
+        objectId: string;
+      }>;
       users: Array<{
         __type: 'Pointer';
         className: '_User';
@@ -154,17 +158,22 @@ export const parseScorecardByUrl = async (url: string): Promise<Scorecard> => {
   const layoutName = scorecard.layoutName;
 
   const userIds = scorecard.users.map((u) => u.objectId);
+  const playerIds = scorecard.unlinkedPlayers.map((p) => p.objectId);
   const entryIds = scorecard.entries.map((e) => e.objectId);
 
   // Fill in other data from websocket API.
   const scorecardInfo = await getScorecardInfo({
-    scorecardUserObjectIds: userIds,
-    scorecardEntryObjectIds: entryIds,
+    userObjectIds: userIds,
+    entryObjectIds: entryIds,
+    playerObjectIds: playerIds,
   });
 
   const getUser = (objectId: string) => {
     return scorecardInfo.users.find(u => u._id == objectId);
-  }
+  };
+  const getPlayer = (objectId: string) => {
+    return scorecardInfo.players.find(u => u._id == objectId);
+  };
 
   // console.log(scorecardInfo.entries);
 
@@ -181,7 +190,13 @@ export const parseScorecardByUrl = async (url: string): Promise<Scorecard> => {
             name: user?.name ?? "unknown",
             username: user?.username ?? "unknown"
           };
-        }),
+        }).concat(entry.players.map(player => {
+          const user = getPlayer(player.objectId);
+          return {
+            name: user?.name ?? "unknown",
+            username: user?.username ?? "unknown"
+          };
+        })),
       }
     }),
   };
@@ -219,7 +234,11 @@ export type UDiscWsSubScorecardEntryResponse = UDiscWsData & {
       strokes: number;
       changeVersion: number;
     }>;
-    players: [];
+    players: Array<{
+      __type: 'Pointer';
+      className: '_Player';
+      objectId: string;
+    }>;
     users: Array<{
       __type: 'Pointer';
       className: '_User';
@@ -232,7 +251,7 @@ export type UDiscWsSubScorecardEntryResponse = UDiscWsData & {
 
 export type UDiscWsGetCardCastRequest = UDiscWsMethodRequest & {
   method: "users.getCardCastUsersAndPlayers";
-  params: [ { userIds: string[] }];
+  params: [ { userIds: string[], playerIds: string[] }];
 };
 
 export type UDiscWsFindCourseRequest = UDiscWsMethodRequest & {
@@ -251,21 +270,29 @@ export type UDiscWsGetCardCastResponse = UDiscWsMethodResult & {
     users: Array<{
       _id: string;
       name: string;
+      fullName: string;
+      username: string;
+    }>;
+    players: Array<{
+      _id: string;
+      name: string;
+      fullName: string;
       username: string;
     }>
   }
 };
 
 export type GetScorecardInfoProps = {
-  scorecardEntryObjectIds: string[];
-  scorecardUserObjectIds: string[];
+  entryObjectIds: string[];
+  userObjectIds: string[];
+  playerObjectIds: string[];
 };
 
 export type GetScorecardInfoResult = {
   users: UDiscWsGetCardCastResponse['result']['users'];
+  players: UDiscWsGetCardCastResponse['result']['players'];
   entries: Array<UDiscWsSubScorecardEntryResponse['fields']>
 };
-
 
 const generateServerId = () => {
   return randomstring.generate({ charset: 'numeric', length: 3}).padStart(3, '0');
@@ -282,7 +309,7 @@ const generateSubId = () => {
 
 // TODO: Convert to class and implement proper async IPC flow.
 export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<GetScorecardInfoResult> => {
-  const { scorecardEntryObjectIds, scorecardUserObjectIds } = props;
+  const { entryObjectIds, userObjectIds, playerObjectIds } = props;
 
   return new Promise<GetScorecardInfoResult>((resolve, reject) => {
     const server = generateServerId(); //'335'; // TODO: make random 001-999
@@ -315,7 +342,7 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
         msg: 'method',
         id: '1',
         method: 'users.getCardCastUsersAndPlayers',
-        params: [{ userIds: scorecardUserObjectIds, playerIds: [] }]
+        params: [{ userIds: userObjectIds, playerIds: playerObjectIds }]
       });
       wss.send(cardCastPayload);
 
@@ -324,7 +351,7 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
         msg: 'sub',
         id: generateSubId(),
         name: 'cardcastEntries',
-        params: [ scorecardEntryObjectIds ]
+        params: [ entryObjectIds ]
       });
       wss.send(entriesPayload);
     };
@@ -345,7 +372,7 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
 
       // Remove the random a.
       const uDiscMessage = JSON.parse(fixed) as UDiscWsData;
-      responses++;
+      
 
       switch (uDiscMessage.msg) {
         case "connected":
@@ -355,25 +382,25 @@ export const getScorecardInfo = async (props: GetScorecardInfoProps): Promise<Ge
           // response to msg type
           // handle IPC result
           ipcMap[(uDiscMessage as UDiscWsMethodResult).id] = (uDiscMessage as UDiscWsMethodResult);
+          responses++;
           break;
         case "added":
           // response to sub type
           // handle IPC result
           if ((uDiscMessage as UDiscWsSubResponse).collection !== 'kadira_settings') {
             addedMap[(uDiscMessage as UDiscWsSubResponse).id] = (uDiscMessage as UDiscWsSubResponse);
-          } else {
-            // super ugly
-            responses--;
+            responses++;
           }
         break;
       }
 
       // TODO: come up with a better way to mark complete.
-      if (responses === 2 + scorecardEntryObjectIds.length) {
+      if (responses === 1 + entryObjectIds.length) {
         // console.log(ipcMap);
         // console.log(addedMap);
         resolve({
           users: (ipcMap['1'] as UDiscWsGetCardCastResponse).result.users,
+          players: (ipcMap['1'] as UDiscWsGetCardCastResponse).result.players,
           entries: Object.values(addedMap).map((a) => (a as UDiscWsSubScorecardEntryResponse).fields),
         });
       }
