@@ -24,7 +24,6 @@ const generateSessionId = () => {
 };
 
 const generateSubId = () => {
-  // QwQK6H3MwErgWcHaa
   return randomstring.generate({ length: 17 });
 };
 
