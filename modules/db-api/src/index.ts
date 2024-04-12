@@ -1,3 +1,4 @@
+import type { Scorecard } from '@dirtleague/common';
 import mongoose from 'mongoose';
 
 // MongoDB setup
@@ -25,6 +26,6 @@ interface ScorecardDocument extends mongoose.Document {
 
 // Function to save scorecard to MongoDB
 async function saveScorecard(scorecard: Scorecard): Promise<ScorecardDocument> {
-    const newScorecard = new ScorecardModel(scorecard);
-    return newScorecard.save();
-};
+  const newScorecard = new ScorecardModel(scorecard);
+  return newScorecard.save();
+}

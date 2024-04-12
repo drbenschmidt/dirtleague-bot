@@ -2,14 +2,14 @@
     "name": "@dirtleague/udisc-api",
     "version": "1.0.0",
     "description": "",
-    "main": "index.js",
+    "main": "src",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
+      "hack": "ts-node ./hack/script.ts"
     },
     "repository": {
       "type": "git",
       "url": "git+https://github.com/drbenschmidt/dirtleague-bot.git",
-      "directory": "modules/discord-bot"
+      "directory": "modules/udisc-api"
     },
     "author": "",
     "license": "MIT",
@@ -17,6 +17,8 @@
       "url": "https://github.com/drbenschmidt/dirtleague-bot/issues"
     },
     "homepage": "https://github.com/drbenschmidt/dirtleague-bot#readme",
-    "dependencies": { }
+    "dependencies": {
+      "@dirtleague/common": "*"
+    }
   }
   

@@ -1,7 +1,7 @@
 import Discord from 'discord.js';
 
 // Discord setup
-const client = new Discord.Client({ intents: "MessageContent" });
+const client = new Discord.Client({ intents: 'MessageContent' });
 const prefix = '!'; // Change this to your preferred prefix
 
 client.on('ready', () => {
@@ -9,7 +9,7 @@ client.on('ready', () => {
 });
 
 // Command to parse and save scorecard from URL
-client.on('message', async message => {
+client.on('message', async (message) => {
   // Command to parse scorecard
   if (message.author.bot || !message.content.startsWith(prefix)) return; // Ignore messages from bots or messages not starting with prefix
 
@@ -29,9 +29,15 @@ client.on('message', async message => {
       const scorecardEmbed = new Discord.EmbedBuilder()
         .setTitle(scorecard.courseName)
         .setDescription(`Date: ${scorecard.date}`)
-        .addFields([{name: 'Players', value: scorecard.players.join('\n'), inline: true}]);
+        .addFields([
+          {
+            name: 'Players',
+            value: scorecard.players.join('\n'),
+            inline: true,
+          },
+        ]);
 
-      const playerScoreFields = scorecard.players.map(player => ({
+      const playerScoreFields = scorecard.players.map((player) => ({
         name: player.name,
         value: player.holes.join(' | '),
         inline: true,

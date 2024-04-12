@@ -1,5 +1,5 @@
 {
-    "name": "@dirtleague/discord-bot",
+    "name": "@dirtleague/db-api",
     "version": "1.0.0",
     "description": "",
     "main": "src",
@@ -9,7 +9,7 @@
     "repository": {
       "type": "git",
       "url": "git+https://github.com/drbenschmidt/dirtleague-bot.git",
-      "directory": "modules/discord-bot"
+      "directory": "modules/db-api"
     },
     "author": "",
     "license": "MIT",

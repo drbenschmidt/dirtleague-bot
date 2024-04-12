@@ -1,53 +1,60 @@
-import axios from 'axios';
-import { load as parseHtml } from 'cheerio';
-
-export type PlayerRecord = {
-    total: number;
-    name: String;
-};
-
-export type Scorecard = {
-    courseName: String;
-    layoutName: String;
-    date: String;
-    numberOfHoles: number;
-    layoutPar: number;
-    layoutDistance: String;
-    players: Array<PlayerRecord>;
-};
+import { Scorecard } from '@dirtleague/common';
+import { UdiscCardCastClient } from './UdiscCardCastClient';
 
 export const parseScorecardById = async (id: string): Promise<Scorecard> => {
-    return parseScorecardByUrl(`https://udisc.com/scorecards/${id}`);
+  return parseScorecardByUrl(`https://udisc.com/scorecards/${id}`);
 };
 
 // Function to parse scorecard from URL
 export const parseScorecardByUrl = async (url: string): Promise<Scorecard> => {
-    const response = await axios.get(url);
-    const $ = parseHtml(response.data);
+  const client = new UdiscCardCastClient();
+  await client.open();
+  const preloadedState = await client.getPreloadedState(url);
+  const scorecard = preloadedState.scorecards.scorecard;
 
-    // TODO: actually parse everything correctly.
-    const courseName = $('h1.course-name').text().trim();
-    const date = $('span.date').text().trim();
-    const players: string[] = [];
-    const scores: { [player: string]: number[] } = {};
+  if (!scorecard.isFinished) {
+    client.close();
+    throw new Error('Unable to parse unfinished scorecard.');
+  }
 
-    const scorecard: Scorecard = {
-        courseName,
-        date,
-        players: [],
-    };
-  
-    $('th.player').each((index, element) => {
-      const playerName = $(element).text().trim();
-      players.push(playerName);
-      scores[playerName] = [];
-    });
-  
-    $('td.score').each((index, element) => {
-      const score = parseInt($(element).text().trim());
-      const playerName = players[index % players.length];
-      scores[playerName].push(score);
-    });
-  
-    return scorecard;
+  const courseName = scorecard.courseName;
+  const date = new Date(scorecard.endDate);
+  const layoutName = scorecard.layoutName;
+
+  const userIds = scorecard.users.map((u) => u.objectId);
+  const playerIds = scorecard.unlinkedPlayers.map((p) => p.objectId);
+  const entryIds = scorecard.entries.map((e) => e.objectId);
+
+  const userPlayerInfo = await client.getUsersAndPlayers(userIds, playerIds);
+  const entryInfo = await client.getEntries(entryIds);
+
+  const getUser = (objectId: string) => {
+    return userPlayerInfo.find((u) => u._id == objectId);
   };
+
+  const playerUserMap = (p: { objectId: string }) => {
+    const user = getUser(p.objectId);
+    return {
+      name: user?.name ?? 'unknown',
+      username: user?.username ?? 'unknown',
+      fullName: user?.fullName,
+    };
+  };
+
+  // console.log(scorecardInfo.entries);
+  client.close();
+
+  return {
+    courseName,
+    layoutName,
+    date,
+    entries: entryInfo.map((entry) => {
+      return {
+        total: entry.totalScore,
+        players: entry.users
+          .map(playerUserMap)
+          .concat(entry.players.map(playerUserMap)),
+      };
+    }),
+  };
+};
