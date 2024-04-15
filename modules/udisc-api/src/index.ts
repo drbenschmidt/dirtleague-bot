@@ -1,8 +1,12 @@
 import { Scorecard } from '@dirtleague/common';
 import { UdiscCardCastClient } from './UdiscCardCastClient';
 
+export const generateUrlById = (id: string): string => {
+  return `https://udisc.com/scorecards/${id}`;
+};
+
 export const parseScorecardById = async (id: string): Promise<Scorecard> => {
-  return parseScorecardByUrl(`https://udisc.com/scorecards/${id}`);
+  return parseScorecardByUrl(generateUrlById(id));
 };
 
 // Function to parse scorecard from URL

@@ -143,10 +143,13 @@ export class UdiscCardCastClient {
         const callback = this.callbacks[payload.id] || this.tempMap[payload.id];
 
         if (callback) {
+          //@ts-ignore
           callback.payloads.push(payload);
 
+          //@ts-ignore
           if (callback.expectedMessages == callback.payloads.length) {
             // YUCKY
+            //@ts-ignore
             callback.handle(callback.payloads as unknown as UDiscWsData);
           }
         }

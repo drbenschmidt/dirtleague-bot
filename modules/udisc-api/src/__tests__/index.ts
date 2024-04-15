@@ -1,8 +1,8 @@
-import {parseScorecardById} from '..';
+import { generateUrlById } from '../index';
 
-test('asdf', () => {
-    it('returns', () => {
-        const result = parseScorecardById('123');
+describe('generateUrlById', () => {
+    it('returns udisc URL', () => {
+        const result = generateUrlById('123');
         expect(result).toBe('https://udisc.com/scorecards/123');
     });
 });
