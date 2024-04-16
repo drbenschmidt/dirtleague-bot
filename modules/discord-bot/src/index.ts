@@ -8,8 +8,9 @@ client.on('ready', () => {
   console.log(`Logged in as ${client.user?.tag}!`);
 });
 
+
 // Command to parse and save scorecard from URL
-client.on('message', async (message) => {
+client.on('messageCreate', async (message) => {
   // Command to parse scorecard
   if (message.author.bot || !message.content.startsWith(prefix)) return; // Ignore messages from bots or messages not starting with prefix
 
