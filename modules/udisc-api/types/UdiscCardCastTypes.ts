@@ -41,6 +41,12 @@ export type UDiscWsSubScorecardEntryResponse = UDiscWsData & {
       objectId: string;
     }>;
     totalScore: number;
+    roundRating: number;
+    roundRatingMetadata: {
+      reasoning: {
+        roundRatingStatus: 'available';
+      }
+    }
   };
   id: string;
 };
