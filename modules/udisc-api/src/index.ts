@@ -1,6 +1,20 @@
 import { Scorecard } from '@dirtleague/common';
 import { UdiscCardCastClient } from './UdiscCardCastClient';
 
+const UDISC_URL_REGEX = /https:\/\/udisc\.com\/scorecards\/([\w\d]{10})/g;
+
+export const isValidUrl = (url: string): boolean => {
+  return UDISC_URL_REGEX.test(url);
+};
+
+export const getIdFromUrl = (url: string): string | undefined => {
+  try {
+    return UDISC_URL_REGEX.exec(url)?.[1];
+  } catch {
+    return;
+  }
+}
+
 export const generateUrlById = (id: string): string => {
   return `https://udisc.com/scorecards/${id}`;
 };

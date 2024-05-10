@@ -1,58 +1,69 @@
-import Discord from 'discord.js';
+import Discord, { APIEmbedField } from 'discord.js';
+import {
+  getIdFromUrl,
+  isValidUrl,
+  parseScorecardById,
+} from '@dirtleague/udisc-api';
 
-// Discord setup
-const client = new Discord.Client({ intents: 'MessageContent' });
-const prefix = '!'; // Change this to your preferred prefix
+export const getTagBot = () => {
+  // Discord setup
+  const client = new Discord.Client({ intents: 'MessageContent' });
+  const prefix = '!'; // Change this to your preferred prefix
 
-client.on('ready', () => {
-  console.log(`Logged in as ${client.user?.tag}!`);
-});
+  client.on('ready', () => {
+    console.log(`Logged in as ${client.user?.tag}!`);
+  });
 
-
-// Command to parse and save scorecard from URL
-client.on('messageCreate', async (message) => {
-  // Command to parse scorecard
-  if (message.author.bot || !message.content.startsWith(prefix)) return; // Ignore messages from bots or messages not starting with prefix
-
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
-  const command = args.shift()?.toLowerCase();
-
-  if (command === 'scorecard') {
-    const url = args[0];
-    if (!url || !url.startsWith('https://udisc.com/scorecards/')) {
-      return message.channel.send('Please provide a valid scorecard URL.');
+  // When people post scorecards just look for the message and for now reply with the embedded thing.
+  // Tie into actual database later.
+  // Add slash-commands later.
+  client.on('messageCreate', async message => {
+    // Command to parse scorecard
+    if (message.author.bot || !isValidUrl(message.content)) {
+      // Ignore messages from bots or messages that aren't the URL.
+      return;
     }
 
-    try {
-      const scorecard = await parseScorecard(url);
-      const scorecardDocument = await saveScorecard(scorecard);
+    const scorecardId = getIdFromUrl(message.content);
+    if (scorecardId) {
+      try {
+        const scorecard = await parseScorecardById(scorecardId);
 
-      const scorecardEmbed = new Discord.EmbedBuilder()
-        .setTitle(scorecard.courseName)
-        .setDescription(`Date: ${scorecard.date}`)
-        .addFields([
-          {
-            name: 'Players',
-            value: scorecard.players.join('\n'),
+        const scorecardEmbed = new Discord.EmbedBuilder()
+          .setTitle(scorecard.courseName)
+          .setDescription(`Date: ${scorecard.date}`)
+          .setURL(message.content)
+          .addFields([
+            {
+              name: 'Players',
+              value: scorecard.entries
+                .map(m => m.players.join(', '))
+                .join('\n'),
+              inline: true,
+            },
+          ]);
+
+        const playerScoreFields: APIEmbedField[] = scorecard.entries.map(
+          entry => ({
+            name: entry.players.map(p => p.name).join(', '),
+            value: entry.total.toString(),
             inline: true,
-          },
-        ]);
+          }),
+        );
 
-      const playerScoreFields = scorecard.players.map((player) => ({
-        name: player.name,
-        value: player.holes.join(' | '),
-        inline: true,
-      }));
+        scorecardEmbed.addFields(playerScoreFields);
 
-      scorecardEmbed.addFields(playerScoreFields);
+        message.channel.send({ embeds: [scorecardEmbed] });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  });
 
-      message.channel.send(scorecardEmbed);
-    } catch (error) {
-      console.error('Error parsing scorecard:', error);
-      message.channel.send('An error occurred while parsing the scorecard.');
+  return {
+    start: () => {
+      // Replace 'YOUR_DISCORD_TOKEN' with your actual Discord bot token
+      client.login('YOUR_DISCORD_TOKEN');
     }
   }
-});
-
-// Replace 'YOUR_DISCORD_TOKEN' with your actual Discord bot token
-client.login('YOUR_DISCORD_TOKEN');
+};
